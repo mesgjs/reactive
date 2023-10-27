@@ -1,0 +1,21 @@
+proxy = reactiveBundle(bundle)
+
+* _ - The collection of member reactives/values
+* __ - The bundle's master reactive
+*   This reactive ripples a change when a member is added or removed
+*   from the collection (in contrast to member value changes)
+* join(sep) - In array mode, returns _values().join(sep)
+* length = value - Sets the array length in array mode
+*   The length may be either a plain number or a reactive number
+* length - Returns the *reactive* array length in array mode
+*   This value reacts to assignments, push/pop, shift/unshift, splice, etc.
+* member = value - Sets a bundle member to a value
+*   Non-reactive values are promoted to reactive values upon assignment
+*   unless the value is a function or the key (member) is a symbol.
+* member - Returns the member's reactive
+* member.rv - The member's current value for reactive.type values
+* _values() - In array mode, returns a plain array of the current,
+*   underlying, non-reactive values
+
+Standard array operations on array bundles happen in a reactive batch, and
+array-valued functions return an array bundle (proxy).

@@ -1,0 +1,50 @@
+r = reactive({ options })
+* Options:
+*   cmp: (old, new) => old !== new
+*   def: old => new
+*   eager: truthy = undefined
+*   v: initialValue = undefined
+* batch(cb) - batch changes made by callback
+*   (return value is return value of callback)
+* run() - attempt to run the evaluation queue
+*   (generally not invoked by users)
+* type(v) - return the reactive type of v (or undefined)
+* untracked(cb) - run the callback without tracking dependencies
+*  (return value is return value of callback)
+
+r.cmp(?new) - get/set comparison function
+r.consumer(c, add = true) - (un)register a consumer reactive
+* intended for use by other reactives, not users
+r.def(def) - set/change definition (chainable)
+* def is undefined - clear definition
+* def is a function - set/change the definition
+* def is a reactive - track reactive value
+r.eager(?new) - get/set evaluation eagerness (chainable)
+r.gf - return the getter function
+r.gsp - return the [getter, setter] function pair
+r.provider(p, add = true) - (un)register a provider reactive
+* intended for use by other reactives, not users
+r.$reactive - return the type (reactive.type)
+r.readonly - false for the main reactive
+r.ripple(dis = 0) - ripple changes across the dependency graph
+* dis is the distance from the change
+* intended for use by other reactives, not users
+r.rov - return the read-only view
+* rov.gf - return the getter function
+* rov.$reactive - return the type (reactive.type)
+* rov.readonly - true for the read-only view
+* rov.rv - readable value
+* rov.toString - toString function
+* rov.valueOf - valueOf function
+r.rv - readable value
+r.set - set a new value (chainable)
+* r.set(old => new)
+* r.set(value)
+r.sf - return the setter function
+* r.sf(old => new)
+* r.sf(value)
+* returns the newly-set value
+r.toString - toString function
+r.unready() - force calculated value to be unready (chainable)
+r.valueOf - valueOf function
+r.wv - writable (and readable) value
