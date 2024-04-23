@@ -15,13 +15,13 @@
  * proxy._			// A collection of member reactives
  * proxy.__			// A reactive for the bundle itself
  */
-function reactiveBundle (iv) {
+function reactiveBundle (iv, opts = {}) {
     // Don't proxy reactive bundles or non-objects.
     if (typeof iv !== 'object' || iv?.$reactive) return iv;
 
     // The target object stores the reactives.
     const isArray = Array.isArray(iv);
-    const t = isArray ? [] : {}, rbs = { r: reactive(), isArray };
+    const t = isArray ? [] : {}, rbs = { r: reactive(), isArray, opts };
     const rb = reactiveBundle, h = rb._handler;
     Object.defineProperty(t, rb.$rbs, { value: rbs });
     if (isArray) rbs.length = reactive({ v: iv.length });
@@ -29,8 +29,8 @@ function reactiveBundle (iv) {
     return rbs.r.wv = new Proxy(t, h);
 }
 Object.defineProperties(reactiveBundle, {
-    $rbs: { value: Symbol.for('rbs') },
-    type: { value: 2 },			// Type 2: proxy
+    $rbs: { value: Symbol.for('rbs') },	// Reactive Bundle Symbol
+    type: { value: 2 },			// Type 2: bundle proxy
 });
 
 (function (rb) {
@@ -48,7 +48,7 @@ const h = rb._handler = {
 	filter (cb) { return aBatchFn(this, 'filter', cb); },
 	flat (...a) { return aBatchFn(this, 'flat', ...a); },
 	flatMap (...a) { return aBatchFn(this, 'flatMap', ...a); },
-	join (sep = ',') { return this._values().join(sep); },
+	join (sep = ',') { return this._bundle().join(sep); },
 	map (cb) { return aBatchFn(this, 'map', cb); },
 	pop () { return aBatchFn(this, 'pop'); },
 	push (...a) { return aBatchFn(this, 'push', ...a); },
@@ -59,7 +59,7 @@ const h = rb._handler = {
 	toReversed () { return aBatchFn(this, 'toReversed'); },
 	toSorted (...a) { return aBatchFn(this, 'toSorted', ...a); },
 	toSpliced (...a) { return aBatchFn(this, 'toSpliced', ...a); },
-	toString () { return this._values().toString(); },
+	toString () { return this._bundle().toString(); },
 	unshift (...a) { return aBatchFn(this, 'unshift', ...a); },
     },
     /* END ARRAY-VERSION METHODS */
@@ -85,7 +85,7 @@ const h = rb._handler = {
 	rbs.r.rv;			// Add bundle dependency
 	if (typeof k === 'symbol') return t[k];
 
-	// Handle array special-cases first
+	// Handle array special-cases next
 	if (rbs.isArray) switch (k) {
 	case 'length': return rbs.length;
 
@@ -119,9 +119,8 @@ const h = rb._handler = {
 	case '_bundle': return h._bundle;
 	case '$reactive': return rb.type;
 	case 'toString': return h._toString;
-	case '_values': return h._values;
 	default:			// Other values
-	    return t[k]?.$reactive ? t[k].rv : t[k];
+	    return ((t[k]?.rv?.$reactive === reactiveBundle.type) ? t[k].rv : t[k]);
 	}
     },
     has (t, k) {			// Item present in object?
@@ -154,22 +153,54 @@ const h = rb._handler = {
 		return true;
 	    }
 
-	    // Promote non-reactive values to reactive values
-	    const rv = v?.$reactive ? v : ((typeof v === 'object') ? rb(v) : reactive({ v }));
+	    // Reactive member
+	    const oldTK = t[k];
 	    if (!t[k]?.$reactive) {
-		Object.defineProperty(t, k, { value: reactive({ v: rv }), enumerable: true, writable: true, configurable: true });
-		batch(() => {
+		Object.defineProperty(t, k, { value: reactive(), enumerable: true, writable: true, configurable: true });
+		t[k].bundle = rbs;
+	    }
+	    const mr = t[k];
+	    reactive.batch(() => {
+		if (v?.bundle === rbs) {	// Internal copy
+		    if (v.def()) mr.def = v.def(); // Reactive tracking
+		    else mr.wv = v.rv;		// Static value
+		} else if (v?.$reactive) {	// External reactive(Bundle?)
+		    if (v.$reactive === reactive.type) mr.def = v;
+		    else mr.wv = v;
+		} else if (typeof v === 'object' && !rbs.opts?.noAutoBundle) mr.wv = rb(v);
+		else mr.wv = v;
+		if (!oldTK) {
 		    if (rbs.isArray) rbs.length.wv = t.length;
 		    rbs.r.ripple();	// Ripple when adding new values
-		});
-	    } else t[k].wv = rv;
+		}
+	    });
 	    return true;
 	  }
 	}
     },
     _toString () { return '[Reactive Bundle]'; },
-    _values () {			// Return underlying values
-	return (this.__.rv, Object.values(this._).map(v => fv(v, true)));
-    },
 };
+
+/*
+ * Update values in-place in the destination bundle from the source
+ * object or array.
+ */
+rb.update = function update(bundle, src) {
+    reactive.batch(() => {
+	if (Array.isArray(bundle)) {	// Array mode
+	    if (typeof src?._bundle === 'function') src = src._bundle();
+	    // Splice bundle values not in src
+	    for (const key of Object.keys(bundle).reverse()) if (!src.includes(fv(bundle[key]))) bundle.splice(key, 1);
+	    // Push src values not in bundle
+	    const has = bundle._bundle();
+	    for (const val of Object.values(src)) if (!has.includes(val)) bundle.push(val);
+	} else {			// Object mode
+	    // Delete bundle keys not in src
+	    for (const key of Object.keys(bundle)) if (!Object.hasOwn(src, key)) delete bundle[key];
+	    // Add or overwrite bundle key/values from src
+	    Object.assign(bundle, src);
+	}
+    });
+    return bundle;
+}
 })(reactiveBundle);

@@ -1,20 +1,39 @@
-proxy = reactiveBundle(bundle)
+proxy = reactiveBundle(bundle, opts = {})
+* Options:
+*   noAutoBundle - disable automatic bundling of nested bundles
 
-* _ - The collection of member reactives/values
-* __ - The bundle's master reactive
-*   This reactive ripples a change when a member is added or removed
-*   from the collection (in contrast to member value changes)
-* join(sep = ',') - In array mode, returns _values().join(sep)
-* length = value - Sets the array length in array mode
-*   The length may be either a plain number or a reactive number
-* length - Returns the *reactive* array length in array mode
-*   This value reacts to assignments, push/pop, shift/unshift, splice, etc.
-* member = value - Sets a bundle member to a value
-*   Non-reactive values are promoted to reactive values upon assignment
-*   unless the value is a function or the key (member) is a symbol.
-* member - Returns the member's reactive
-* member.rv - The member's current value for reactive.type values
-* _values() - Returns a plain array of the underlying, non-reactive values
+proxy ("instance" properties and methods)
+-----------------------------------------
+_ - A bundle of member reactives
+__ - The bundle's master reactive
+* This reactive ripples a change when a member is added or removed
+* from the bundle (in contrast to member-value changes), e.g.:
+* reactive({ eager: true, def: () => {
+*   proxy.__; console.log('Bundle keys changed'); }});
+_bundle() - Returns a snapshot of the underlying, non-reactive bundle
+join(sep = ',') - In array mode, returns _bundle().join(sep)
+length = value - Sets the array length in array mode
+* The value may be either a plain number or a reactive number.
+length - Returns the *reactive* array length in array mode
+* This value reacts to assignments, push/pop, shift/unshift, splice, etc.
+member = value - Sets a bundle member to a value
+* A member reactive ripples when existing reactive values change.
+* The master reactive ripples when adding or removing reactive-valued keys.
+* Function values and symbol-keyed members are stored as-is.
+* External scalar reactive values are tracked via def.
+* Arrays and objects are auto-bundled unless the no noAutoBundle option
+* is set.
+member - Returns the member's (usually) reactive value or bundle proxy
+member.rv - The member's current value for reactive.type values
+$reactive - The reactive type (reactiveBundle.type)
 
 Standard array operations on array bundles happen in a reactive batch, and
 array-valued functions return an array bundle (proxy).
+
+reactiveBundle ("class" properties and methods)
+-----------------------------------------------
+type - 2 (reactive bundle)
+update(dstProxy, srcBundle) - Update the existing reactive bundle (dstProxy)
+* in-place with (keys and) values from the raw (non-reactive) srcBundle.
+* Array bundles are quasi-set-like: dstProxy values not in srcBundle are
+* spliced out and unique values only in srcBundle are pushed onto the end.
