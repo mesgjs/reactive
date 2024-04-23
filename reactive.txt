@@ -12,6 +12,10 @@ r = reactive({ options })
 * untracked(cb) - run the callback without tracking dependencies
 *  (return value is return value of callback)
 
+A reactive may contain another reactive. Reactive bundles, in particular,
+depend on this in order to be able to track both "array-shift" (positional)
+and "assignment" (value) types of changes.
+
 r.cmp(?new) - get/set comparison function
 r.consumer(c, add = true) - (un)register a consumer reactive
 * intended for use by other reactives, not users

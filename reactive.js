@@ -3,7 +3,7 @@
  * A reactive value library supporting memoization and per-value
  * selection of lazy or eager, chain-less dependency evaluation.
  *
- * Copyright 2023 by Kappa Computer Solutions, LLC and Brian Katzung
+ * Copyright 2023-2024 by Kappa Computer Solutions, LLC and Brian Katzung
  * Author: Brian Katzung <briank@kappacs.com>
  */
 
@@ -236,6 +236,10 @@ function reactive (opts = {}) {
 	    r.run();
 	    return res;
 	},
+	fv (v, bfv = false) {	// Final value in possibly-reactive chain
+	    while (v?.rv) v = v.rv;
+	    return ((bfv && typeof v?._bundle === 'function') ? v._bundle() : v);
+	},
 	run () {			// Run the eval queue (maybe)
 	    if (!r._evalWait) {
 		++r._evalWait;
@@ -253,13 +257,9 @@ function reactive (opts = {}) {
 	},
 	/* PRIVATE METHODS */
 	_queueEval (ro, add = true) {	// (De)queue reactive evaluation
-	    // false: remove; true: unconditional add; other: conditional add
-	    if (!add) {
-		// No need to filter if we *just* dequeued it
-		if (ro !== r._curEval) r._evalQ = r._evalQ.filter(i => i !== ro);
-	    }
-	    else if (typeof add !== 'boolean') r._evalQ.push(ro);
-	    else if (!r._evalQ.includes(ro)) r._evalQ.push(ro);
+	    if (add) r._evalQ.push(ro);
+	    // No need to filter if we *just* dequeued it
+	    else if (ro !== r._curEval) r._evalQ = r._evalQ.filter(i => i !== ro);
 	},
     });
 })(reactive);

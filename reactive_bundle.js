@@ -4,7 +4,7 @@
  * mixed-array-and/or-object structure (bundle) supplied as the
  * initial value.
  *
- * Copyright 2023 by Kappa Computer Solutions, LLC and Brian Katzung
+ * Copyright 2023-2024 by Kappa Computer Solutions, LLC and Brian Katzung
  * Author: Brian Katzung <briank@kappacs.com>
  *
  *
@@ -35,7 +35,7 @@ Object.defineProperties(reactiveBundle, {
 
 (function (rb) {
 const indpat = /^(?:0|[1-9]\d*)$/;	// Index key pattern
-const batch = reactive.batch;
+const batch = reactive.batch, fv = reactive.fv;
 const aBatchFn = (th, fnn, ...a) => batch(() => {
     const res = Array.prototype[fnn].apply(th, a);
     rb._handler._rbs(th).length.wv = th._.length;
@@ -48,7 +48,7 @@ const h = rb._handler = {
 	filter (cb) { return aBatchFn(this, 'filter', cb); },
 	flat (...a) { return aBatchFn(this, 'flat', ...a); },
 	flatMap (...a) { return aBatchFn(this, 'flatMap', ...a); },
-	join (sep = '') { return this._values().join(sep); },
+	join (sep = ',') { return this._values().join(sep); },
 	map (cb) { return aBatchFn(this, 'map', cb); },
 	pop () { return aBatchFn(this, 'pop'); },
 	push (...a) { return aBatchFn(this, 'push', ...a); },
@@ -64,6 +64,12 @@ const h = rb._handler = {
     },
     /* END ARRAY-VERSION METHODS */
 
+    _bundle () {                        // Non-reactive underlying bundle
+        const res = Array.isArray(this._) ? [] : {};
+        for (const key of Object.keys(this._)) res[key] = fv(this._[key], true);
+        return (this.__.rv, res);
+    },
+
     // Delete an item from the object
     deleteProperty (t, k) {
 	const rbs = h._rbs(t), ho = Object.hasOwn(t, k);
@@ -76,12 +82,12 @@ const h = rb._handler = {
     },
     get (t, k) {			// Get an item in the object
 	const rbs = h._rbs(t);
+	rbs.r.rv;			// Add bundle dependency
 	if (typeof k === 'symbol') return t[k];
 
 	// Handle array special-cases first
 	if (rbs.isArray) switch (k) {
 	case 'length': return rbs.length;
-	case '_values': return h._values;
 
 	case 'concat':
 	case 'filter':
@@ -110,13 +116,16 @@ const h = rb._handler = {
 	// proxy.__ returns the proxy's reactive.
 	case '__': return rbs.r;
 	// Infrastructure-related functions
+	case '_bundle': return h._bundle;
 	case '$reactive': return rb.type;
 	case 'toString': return h._toString;
+	case '_values': return h._values;
 	default:			// Other values
-	    return t[k]?.$reactive ? (rbs.r.rv, t[k].rv) : t[k];
+	    return t[k]?.$reactive ? t[k].rv : t[k];
 	}
     },
     has (t, k) {			// Item present in object?
+	h._rbs(t).r.rv;
 	switch (k) {
 	case '_': // Fall through...
 	case '__': return true;
@@ -160,8 +169,7 @@ const h = rb._handler = {
     },
     _toString () { return '[Reactive Bundle]'; },
     _values () {			// Return underlying values
-	const fv = v => ((v?.$reactive === reactive.type) ? fv(v.rv) : v);
-	return Object.values(this._).map(v => fv(v));
+	return (this.__.rv, Object.values(this._).map(v => fv(v, true)));
     },
 };
 })(reactiveBundle);
