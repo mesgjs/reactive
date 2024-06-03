@@ -237,7 +237,7 @@ function reactive (opts = {}) {
 	    return res;
 	},
 	fv (v, bfv = false) {	// Final value in possibly-reactive chain
-	    while (v?.rv) v = v.rv;
+	    while (v?.$reactive === reactive.type) v = v.rv;
 	    return ((bfv && typeof v?._bundle === 'function') ? v._bundle() : v);
 	},
 	run () {			// Run the eval queue (maybe)
