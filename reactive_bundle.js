@@ -41,6 +41,7 @@ const aBatchFn = (th, fnn, ...a) => batch(() => {
     rb._handler._rbs(th).length.wv = th._.length;
     return Array.isArray(res) ? rb(res) : res;
 });
+// deno-lint-ignore no-unused-vars
 const h = rb._handler = {
     /* BEGIN ARRAY-VERSION METHODS */
     _arrayMeth: {
@@ -193,7 +194,10 @@ rb.update = function update(bundle, src) {
 	    for (const key of Object.keys(bundle).reverse()) if (!src.includes(fv(bundle[key]))) bundle.splice(key, 1);
 	    // Push src values not in bundle
 	    const has = bundle._bundle();
-	    for (const val of Object.values(src)) if (!has.includes(val)) bundle.push(val);
+	    for (const val of Object.values(src)) if (!has.includes(val)) {
+		bundle.push(val);
+		has.push(val);
+	    }
 	} else {			// Object mode
 	    // Delete bundle keys not in src
 	    for (const key of Object.keys(bundle)) if (!Object.hasOwn(src, key)) delete bundle[key];
