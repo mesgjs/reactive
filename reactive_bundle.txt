@@ -1,6 +1,6 @@
 proxy = reactiveBundle(bundle, opts = {})
 * Options:
-*   noAutoBundle - disable automatic bundling of nested bundles
+*   shallow - disable automatic bundling of nested bundles
 
 proxy ("instance" properties and methods)
 -----------------------------------------

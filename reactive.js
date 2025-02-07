@@ -3,7 +3,7 @@
  * A reactive value library supporting memoization and per-value
  * selection of lazy or eager, chain-less dependency evaluation.
  *
- * Copyright 2023-2024 by Kappa Computer Solutions, LLC and Brian Katzung
+ * Copyright 2023-2025 by Kappa Computer Solutions, LLC and Brian Katzung
  * Author: Brian Katzung <briank@kappacs.com>
  */
 
@@ -31,7 +31,13 @@ function reactive (opts = {}) {
 }
 
 (r => {
-    r._prototype = {
+    r._roPrototype = {
+	get $reactive () { return r.type; },
+	get readonly () { return true; },
+	toString () { return this.rv.toString(); },
+	valueOf () { return this.rv; },
+    };
+    r._prototype = Object.setPrototypeOf({
 	/* PUBLIC ATTRIBUTES */
 	get cmp () { return this._cmp; },
 	get def () { return this._defMeth; },
@@ -68,23 +74,19 @@ function reactive (opts = {}) {
 	get readonly () { return false; },
 	get rov () {			// Get read-only view
 	    if (!this._rov) {
-		const r = this;
-		r._rov = Object.freeze({
-		    get gf () { return r.gf; },
-		    get $reactive () { return r.type; },
-		    get readonly () { return true; },
-		    get rv () { return r.rv; },
-		    toString () { return r.rv.toString(); },
-		    valueOf () { return r.rv; },
-		});
+		const t = this;
+		t._rov = Object.freeze(Object.setPrototypeOf({
+		    get gf () { return t.gf; },
+		    get rv () { return t.rv; },
+		}, r._roPrototype));
 	    }
 	    return this._rov;
 	},
 	get rv () {			// Current value (readable)
 	    if (this._sched) {
 		// We're evaluating now, so remove from queue
-		this._sched = false;
 		r._queueEval(this, false);
+		this._sched = false;
 	    }
 	    if (r._consumer && !r._untrack) {
 		// Producer-consumer tracking
@@ -163,13 +165,11 @@ function reactive (opts = {}) {
 	    this._set(vvf);
 	    return this;
 	},
-	toString () { return this.rv.toString(); },
 	unready () {			// Force unready
 	    if (this._def) this._rdy = false;
 	    this._schedule();
 	    return this;
 	},
-	valueOf () { return this.rv; },
 	/* PRIVATE METHODS */
 	_checkReady () {		// Determine boolean readiness
 	    if (this._rdy !== undefined) return this._rdy;
@@ -200,10 +200,7 @@ function reactive (opts = {}) {
 	    return this;
 	},
 	_schedule () {			// Schedule for eval if needed
-	    if (!this._rdy && !this._sched && (this._eager || this._cons.length)) {
-		this._sched = true;
-		r._queueEval(this);
-	    }
+	    if (!this._rdy && !this._sched && (this._eager || this._cons.length)) r._queueEval(this);
 	    r.run();
 	},
 	_set (vvf) {			// Prototype setter
@@ -221,12 +218,14 @@ function reactive (opts = {}) {
 	    this._rdy = true;
 	    if (chg) this.ripple();
 	},
-    };
+    }, r._roPrototype);
 
     Object.assign(r, {
 	_evalWait: 0,			// Suspend evaluation
 	_untrack: 0,			// Suspend tracking
-	_evalQ: [],			// Reactive eval queue
+	// Reactive evaluation queues
+	_conQ: [],			// Reactives with consumers 1st
+	_termQ: [],			// Terminal reactives (without consumers) 2nd
 	// _curEval: undefined,		// Most recently dequeued reactive
 	/* PUBLIC METHODS */
 	batch (cb) {			// Execute callback as a batch
@@ -243,7 +242,7 @@ function reactive (opts = {}) {
 	run () {			// Run the eval queue (maybe)
 	    if (!r._evalWait) {
 		++r._evalWait;
-		for (let i; i = r._curEval = r._evalQ.shift(); i.rv);
+		for (let i; i = r._curEval = r._conQ.shift() || r._termQ.shift(); i.rv);
 		--r._evalWait;
 	    }
 	},
@@ -257,9 +256,20 @@ function reactive (opts = {}) {
 	},
 	/* PRIVATE METHODS */
 	_queueEval (ro, add = true) {	// (De)queue reactive evaluation
-	    if (add) r._evalQ.push(ro);
+	    if (add) {
+		if (ro._cons.length) {	// 1st (consumed) queue when consumed
+		    ro._sched = 'con';
+		    r._conQ.push(ro);
+		} else {		// 2nd (terminal) queue otherwise
+		    ro._sched = 'term';
+		    r._termQ.push(ro);
+		}
+	    }
 	    // No need to filter if we *just* dequeued it
-	    else if (ro !== r._curEval) r._evalQ = r._evalQ.filter(i => i !== ro);
+	    else if (ro !== r._curEval) {
+		if (ro._sched === 'con') r._conQ = r._conQ.filter(i => i !== ro);
+		else r._termQ = r._termQ.filter(i => i !== ro);
+	    }
 	},
     });
 })(reactive);

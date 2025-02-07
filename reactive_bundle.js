@@ -4,7 +4,7 @@
  * mixed-array-and/or-object structure (bundle) supplied as the
  * initial value.
  *
- * Copyright 2023-2024 by Kappa Computer Solutions, LLC and Brian Katzung
+ * Copyright 2023-2025 by Kappa Computer Solutions, LLC and Brian Katzung
  * Author: Brian Katzung <briank@kappacs.com>
  *
  *
@@ -18,6 +18,8 @@
 function reactiveBundle (iv, opts = {}) {
     // Don't proxy reactive bundles or non-objects.
     if (typeof iv !== 'object' || iv?.$reactive) return iv;
+    const sym = Symbol.for('reactiveBundle');
+    if (iv[sym]) return iv[sym];
 
     // The target object stores the reactives.
     const isArray = Array.isArray(iv);
@@ -26,7 +28,9 @@ function reactiveBundle (iv, opts = {}) {
     Object.defineProperty(t, rb.$rbs, { value: rbs });
     if (isArray) rbs.length = reactive({ v: iv.length });
     for (const key of Object.keys(iv)) h.set(t, key, iv[key]);
-    return rbs.r.wv = new Proxy(t, h);
+    const p = rbs.r.wv = new Proxy(t, h);
+    Object.defineProperty(iv, sym, { value: p });
+    return p;
 }
 Object.defineProperties(reactiveBundle, {
     $rbs: { value: Symbol.for('rbs') },	// Reactive Bundle Symbol
@@ -168,7 +172,7 @@ const h = rb._handler = {
 		} else if (v?.$reactive) {	// External reactive(Bundle?)
 		    if (v.$reactive === reactive.type) mr.def = v;
 		    else mr.wv = v;
-		} else if (typeof v === 'object' && !rbs.opts?.noAutoBundle) mr.wv = rb(v);
+		} else if (typeof v === 'object' && !rbs.opts?.shallow) mr.wv = rb(v);
 		else mr.wv = v;
 		if (!oldTK) {
 		    if (rbs.isArray) rbs.length.wv = t.length;
