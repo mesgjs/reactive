@@ -19,7 +19,7 @@ function reactive (opts = {}) {
 	// _def: undefined,		// Reactive definition/memo/effect
 	// _g: undefined,		// Getter function
 	// _rov: undefined,		// Read-only view
-	// _sched: false,		// Currently scheduled for eval
+	// _sched: false,		// Eval queue type (t/nt) if scheduled
 	// _s: undefined,		// Setter function
 
     }, reactive._prototype);
@@ -34,8 +34,9 @@ function reactive (opts = {}) {
     r._roPrototype = {
 	get $reactive () { return r.type; },
 	get readonly () { return true; },
-	toString () { return this.rv.toString(); },
-	valueOf () { return this.rv; },
+	get rv () { return this.gf(); },
+	toString () { return this.gf().toString(); },
+	valueOf () { return this.gf(); },
     };
     r._prototype = Object.setPrototypeOf({
 	/* PUBLIC ATTRIBUTES */
@@ -54,7 +55,7 @@ function reactive (opts = {}) {
 		this._def = d;
 		this._rdy = false;
 		this._schedule();
-	    } else if (d?.$reactive === reactive.type) {
+	    } else if (d?.$reactive === r.type) {
 		// Clone a reactive value using its getter function
 		this.def = d.gf;
 	    }
@@ -65,8 +66,7 @@ function reactive (opts = {}) {
 	    this._schedule();
 	},
 	get gf () {			// Return getter function
-	    if (!this._g) this._g = (function () { return this.rv; }).bind(this);
-	    return this._g;
+	    return (this._g ||= () => this.rv);
 	},
 	// Return [getter, setter] pair
 	get gsp () { return [this.gf, this.sf]; },
@@ -76,8 +76,7 @@ function reactive (opts = {}) {
 	    if (!this._rov) {
 		const t = this;
 		t._rov = Object.freeze(Object.setPrototypeOf({
-		    get gf () { return t.gf; },
-		    get rv () { return t.rv; },
+		    gf: this.gf,
 		}, r._roPrototype));
 	    }
 	    return this._rov;
@@ -117,8 +116,7 @@ function reactive (opts = {}) {
 	    return this._v;
 	},
 	get sf () {			// Return setter function
-	    if (!this._s) this._s = (function (vvf) { return this._set(vvf); }).bind(this);
-	    return this._s;
+	    return (this._s ||= vvf => this._set(vvf));
 	},
 	get wv () { return this.rv; },	// Writable value
 	set wv (v) {
@@ -224,8 +222,8 @@ function reactive (opts = {}) {
 	_evalWait: 0,			// Suspend evaluation
 	_untrack: 0,			// Suspend tracking
 	// Reactive evaluation queues
-	_conQ: [],			// Reactives with consumers 1st
-	_termQ: [],			// Terminal reactives (without consumers) 2nd
+	_ntREQ: [],			// Non-terminal (with consumers) 1st
+	_tREQ: [],			// Terminal (without consumers) 2nd
 	// _curEval: undefined,		// Most recently dequeued reactive
 	/* PUBLIC METHODS */
 	batch (cb) {			// Execute callback as a batch
@@ -242,7 +240,7 @@ function reactive (opts = {}) {
 	run () {			// Run the eval queue (maybe)
 	    if (!r._evalWait) {
 		++r._evalWait;
-		for (let i; i = r._curEval = r._conQ.shift() || r._termQ.shift(); i.rv);
+		for (let i; i = r._curEval = r._ntREQ.shift() || r._tREQ.shift(); i.rv);
 		--r._evalWait;
 	    }
 	},
@@ -257,18 +255,18 @@ function reactive (opts = {}) {
 	/* PRIVATE METHODS */
 	_queueEval (ro, add = true) {	// (De)queue reactive evaluation
 	    if (add) {
-		if (ro._cons.length) {	// 1st (consumed) queue when consumed
-		    ro._sched = 'con';
-		    r._conQ.push(ro);
-		} else {		// 2nd (terminal) queue otherwise
-		    ro._sched = 'term';
-		    r._termQ.push(ro);
+		if (ro._cons.length) {	// non-terminal (with consumers) 1st
+		    ro._sched = 'nt';
+		    r._ntREQ.push(ro);
+		} else {		// terminal (without consumers) 2nd
+		    ro._sched = 't';
+		    r._tREQ.push(ro);
 		}
 	    }
 	    // No need to filter if we *just* dequeued it
 	    else if (ro !== r._curEval) {
-		if (ro._sched === 'con') r._conQ = r._conQ.filter(i => i !== ro);
-		else r._termQ = r._termQ.filter(i => i !== ro);
+		if (ro._sched === 'nt') r._ntREQ = r._ntREQ.filter(i => i !== ro);
+		else r._tREQ = r._tREQ.filter(i => i !== ro);
 	    }
 	},
     });
