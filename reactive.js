@@ -74,8 +74,7 @@ function reactive (opts = {}) {
 	get readonly () { return false; },
 	get rov () {			// Get read-only view
 	    if (!this._rov) {
-		const t = this;
-		t._rov = Object.freeze(Object.setPrototypeOf({
+		this._rov = Object.freeze(Object.setPrototypeOf({
 		    gf: this.gf,
 		}, r._roPrototype));
 	    }

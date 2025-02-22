@@ -4,6 +4,7 @@
  * Copyright 2024-2025 by Kappa Computer Solutions, LLC and Brian Katzung
  * Author: Brian Katzung <briank@kappacs.com>
  */
+// deno-lint-ignore no-unused-vars
 class ReactiveInputGroup {
     constructor () {
 	this._inputs = [];
@@ -13,7 +14,6 @@ class ReactiveInputGroup {
 
     // Add inputs to the group
     add (...inputs) {
-	const bundle = this._bundle;
 	for (let input of inputs) {
 	    if (input?.length !== undefined) this.add(...input);
 	    else {
@@ -21,8 +21,7 @@ class ReactiveInputGroup {
 		if (!input.isReactiveInput) input = new ReactiveInput(input);
 		this._inputs.push(input);
 		input.bindGroup(this);
-		const name = input.name, key = input.key;
-		if (name) this._nameMap[name] = input;
+		if (input.name) this._nameMap[input.name] = input;
 		for (const id of input.ids) this._idMap[id] = input;
 	    }
 	}
