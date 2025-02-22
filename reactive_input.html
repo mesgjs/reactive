@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+<script src='reactive.js'></script>
+<script src='reactive_bundle.js'></script>
+<script src='reactive_input.js'></script>
+</head>
+<body>
+<p><input type='radio' name='radio' value='r1'> R1
+<input type='radio' name='radio' value='r2'> R2
+<input type='radio' name='radio' value='r3'> R3</p>
+<p><input type='checkbox' name='chkbox' value='cb1'> CB1
+<input type='checkbox' name='chkbox' value='cb2'> CB2
+<input type='checkbox' name='chkbox' value='cb3'> CB3</p>
+<p><select name='sel1' style='vertical-align: top;'>
+<optgroup label='Group 1'>
+<option value='s1o1'>Opt 1</option>
+<option value='s1o2'>Opt 2</option>
+</optgroup>
+<optgroup label='Group 2'>
+<option value='s1o3'>Opt 3</option>
+<option value='s1o4'>Opt 4</option>
+</optgroup>
+</select> <select name='selm' multiple>
+<option value='smo1'>Opt 1</option>
+<option value='smo2'>Opt 2</option>
+<option value='smo3'>Opt 3</option>
+</select></p>
+<p><input id='text' style='vertical-align: top;'> <textarea id='textarea'></textarea></p>
+<script>
+let rig = new ReactiveInputGroup().bindStorage(), sto = rig.storage;
+rig.add(
+    { name: 'radio', defaultValue: 'r2' },
+    { name: 'chkbox', multiple: true },
+    { name: 'sel1', defaultValue: 's1o2' },
+    { name: 'selm', multiple: true },
+    { id: 'text', key: 'text', textMode: 'input', notify: true, bubble: true },
+    { id: 'textarea', key: 'area', textMode: 'change' },
+).bindHTML(document.querySelectorAll('input,select,textarea'));
+</script>
+</body>
+</html>
