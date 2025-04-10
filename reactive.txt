@@ -1,68 +1,139 @@
 r = reactive({ options })
 * Options:
-*   cmp: (old, new) => old !== new (immutable)
+*   compare: (old, new) => old !== new (immutable)
 *   def: old => new
 *   eager: truthy = undefined
 *   v: initialValue = undefined
 
+Reactive values in this implementation are like spreadsheet cells. They can
+be set to a value or a definition (just as a spreadsheet cell may be set to a
+value or a formula). The value of the reactive is either the assigned value,
+or the value calculated from the definition.
+
+If a reactive changes value (either because it was assigned a new value,
+assigned a new definition resulting in a new value, or because the calculated
+value resulting from an existing definition changed), any other reactive
+values with a definition based on the reactive value will automatically be
+updated.
+
+Updates are normally only lazily recalculated when needed (the .rv (or .wv) or
+.getter() is accessed or used in another reactive's definition), but you can
+make recalculation eager if the definition should have side effects.
+
+Reactive's with side effects should always be "terminal nodes", i.e. not used
+within the definitions of other reactives. Other implementations have more
+complicated interfaces to enforce this. This implementation aspires to
+have a simpler, more all-in-one model.
+
 reactive ("class" properties and methods)
 -----------------------------------------
-batch(cb) - batch changes made by callback
-* return value is return value of callback
+
+batch(callback) - batch changes made by callback
+* returns a promise with the results of running the callback
+
 fv(v, bundle = false) - returns the final (non-reactive) value of v
 * If bundle is true, returns the _bundle() value for bundles.
-run() - attempt to run the evaluation queue
+
+run(task?) - attempt to run queued tasks and recalculations
+* optionally adds a task (such as a batch callback) to the task queue
+* executes all the pending tasks and queued recalculations
 * not generally invoked directly by users
+
 type - 1 (scalar reactive)
+
 typeOf(v) - return the reactive type of v
 * reactive.type, reactiveBundle.type, or undefined
-untracked(cb) - run the callback without tracking dependencies
+
+untracked(callback) - run the callback without tracking dependencies
 * return value is return value of callback
 
 r ("instance" properties and methods)
 -------------------------------------
+
+r.accessors - Returns the [r.getter, r.setter] function pair
+
 r.bundle - The associated reactiveBundle state or undefined
-r.cmp - The comparison function for this reactive (read-only)
+* This is used to differentiate between intra-bundle (e.g. shift/unshift/etc)
+* and non-intra-bundle assignments. Intended for internal use.
+
+r.compare - The comparison function for this reactive (read-only)
+* To use a non-default comparison function, you must include the compare
+* option of the reactive() creation function.
+
 r.consumer(c, add = true) - (Un)register a consumer reactive
 * intended for use by other reactives, not users
-r.def = def, r.def(def?) - Set/change (or return) definition
-* def is undefined: clear definition
-* def is a function: set/change the definition
-* def is a reactive: track reactive value
-* r.def returns the def() method (function)
-* r.def() returns the current definition.
-* r.def(def) returns r for chaining
-r.eager = new, r.eager(new?) - Get/set evaluation eagerness
-* r.eager returns the eager() method (function)
-* r.eager() returns the current eager status
-* r.eager(new) returns r for chaining
-r.gf - Return the getter function
-r.gsp - Return the [getter, setter] function pair
+
+r.def, r.def = newDef - Get or set the value definition function
+* newDef is undefined: clear definition
+* newDef is a function: set/change the definition
+* newDef is a reactive: track reactive value (short for r.def = newDef.getter)
+
+r.eager, r.eager = value - Get/set evaluation eagerness
+* "Truthy" values cause value recalculations to be eager (upon dependency
+* changes) instead of the default lazy algorithm (upon value reference).
+
+gf = r.getter - Returns a getter function
+* gf() - Returns the current value (r.rv) when called
+
 r.provider(p, add = true) - (Un)register a provider reactive
 * intended for use by other reactives, not users
+
 r.$reactive - The reactive type (reactive.type)
+
 r.readonly - False for the main reactive
-r.ripple(dis = 0) - Ripple changes across the dependency graph
-* dis is the distance from the change
-* intended for use by other reactives, not users
-r.rov - Return the read-only view
-* rov.gf - Return the getter function
+
+rov = r.readonlyView - Returns a read-only view
+* rov.getter - Return the getter function
 * rov.$reactive - Return the type (reactive.type)
 * rov.readonly - True for the read-only view
 * rov.rv - Readable value
-* rov.toString - toString function
-* rov.valueOf - valueOf function
-r.rv - Readable value (cannot be set)
-r.set - Set a new value (chainable)
+* rov.toString - toString method
+* rov.valueOf - valueOf method
+
+r.ripple(dis = 0) - Ripple changes across the dependency graph
+* dis is the distance from the change
+* intended for use by other reactives, not users
+
+r.rv - Readable value (computed if defined; cannot be set)
+
+r.set - Set a new value (chainable; removes any existing def)
 * r.set(old => new)
 * r.set(value)
-r.sf - Return the setter function
-* r.sf(old => new)
-* r.sf(value)
-* returns the newly-set value
-r.toString - toString function
+
+r.setDef(def) - Chainable variant of r.def = def.
+
+r.setEager(eager) - Chainable variant of r.eager = eager.
+
+sf = r.setter - Returns a setter function
+* sf(old => new) - can take a function that accepts the old value and
+*	returns a new value
+* sf(value) - or a non-function value (use sf(() => function) to set a function)
+* These return the newly-set value. Removes any existing def.
+
+r.toString() - toString method
+
 r.unready() - Force calculated value to be unready (chainable)
-r.valueOf - valueOf function
-r.wv - Writable value
+
+r.valueOf() - valueOf method
+
+r.wv - Writable value (assignment removes a definition, if present)
 * Also readable for read-modify-write operations like += and --,
 * but .rv should be used for read-only operations to clarify intent.
+
+EXAMPLES
+
+const r1 = reactive({ v: 1 });
+r1.rv; // 1
+const r2 = reactive({ def: r1 }); // r2 now tracks r1 (r2.rv === r1.rv)
+const r3 = reactive({ def: () => r1.rv }); // r3 also tracks r1
+const r4 = reactive({ def: () => r3.rv * 2 }); // r4 is double r3
+++r1.wv; // r1.rv, r2.rv, r3.rv are now all 2
+r4.rv; // 4
+r3.set(5); // chainable r3.wv = 5; r3 no longer tracks r1
+r4.rv; // 10 (double the current value in r3)
+s3 = r3.setter;
+g4 = r4.getter;
+s3(v => v + 1); // setter-function version of ++r3.wv; r3.rv is now 6
+g4(); // 12 (getter-function version of r4.rw)
+r4.setEager(1); // r4 now recalculates as soon as dependencies change
+// rather than only when the value is needed (via .rv/.wv or .getter()).

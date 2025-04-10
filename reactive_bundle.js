@@ -167,7 +167,7 @@ const h = rb._handler = {
 	    const mr = t[k];
 	    reactive.batch(() => {
 		if (v?.bundle === rbs) {	// Internal copy
-		    if (v.def()) mr.def = v.def(); // Reactive tracking
+		    if (v.def) mr.def = v.def; // Reactive tracking
 		    else mr.wv = v.rv;		// Static value
 		} else if (v?.$reactive) {	// External reactive(Bundle?)
 		    if (v.$reactive === reactive.type) mr.def = v;
