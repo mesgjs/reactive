@@ -34,9 +34,7 @@ batch(callback) - batch changes made by callback
 fv(v, bundle = false) - returns the final (non-reactive) value of v
 * If bundle is true, returns the _bundle() value for bundles.
 
-run(task?) - attempt to run queued tasks and recalculations
-* optionally adds a task (such as a batch callback) to the task queue
-* executes all the pending tasks and queued recalculations
+run() - attempt to run queued recalculations
 * not generally invoked directly by users
 
 type - 1 (scalar reactive)
