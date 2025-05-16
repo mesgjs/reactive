@@ -213,4 +213,7 @@ rb.update = function update(bundle, src) {
 }
 })(reactiveBundle);
 
+export { reactiveBundle, reactiveBundle as default };
+export const { update } = reactiveBundle;
+
 // END

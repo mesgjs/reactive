@@ -117,6 +117,10 @@ function reactive (opts = {}) {
 		    this._error = e;
 		    this._rdy = true;	// The error is our new result
 		    this.ripple();
+		    if (this._eager && !this._cons.size) {
+			// In space, no one can hear you scream
+			queueMicrotask(() => { throw new Error(`[Reactive] ${e.message}`, { cause: [ e, this ] }); });
+		    }
 		    throw e;
 		}
 	    }
@@ -270,6 +274,7 @@ function reactive (opts = {}) {
 	    ++r._evalWait;
 	    const res = cb();
 	    --r._evalWait;
+	    r.run();
 	    return res;
 	},
 	fv (v, bfv = false) {	// Final value in possibly-reactive chain
@@ -298,5 +303,8 @@ function reactive (opts = {}) {
 	},
     });
 })(reactive);
+
+export { reactive, reactive as default };
+export const { batch, fv, run, typeOf, untracked } = reactive;
 
 // END

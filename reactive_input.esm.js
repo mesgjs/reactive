@@ -5,7 +5,7 @@
  * Author: Brian Katzung <briank@kappacs.com>
  */
 // deno-lint-ignore no-unused-vars
-class ReactiveInputGroup {
+export class ReactiveInputGroup {
     constructor () {
 	this._inputs = [];
 	this._idMap = {};
@@ -62,7 +62,7 @@ class ReactiveInputGroup {
 
 }
 
-class ReactiveInput {
+export class ReactiveInput {
     static _textEvents = [ 'blur', 'input', 'keydown', 'paste' ];
 
     /*
@@ -271,7 +271,6 @@ class ReactiveInput {
 	    for (const el of changed) el.dispatchEvent(cev);
 	}
     }
-
 }
 
 // END
