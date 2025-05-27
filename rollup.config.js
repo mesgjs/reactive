@@ -2,7 +2,7 @@ import terser from "npm:@rollup/plugin-terser";
 
 export default [
 {
-    input: './reactive.esm.js',
+    input: 'src/reactive.esm.js',
     output: [
 	{
 	    file: 'dist/reactive.min.esm.js',
@@ -27,7 +27,7 @@ export default [
     ],
 },
 {
-    input: './reactive_bundle.esm.js',
+    input: 'src/reactive_bundle.esm.js',
     output: [
 	{
 	    file: 'dist/reactive_bundle.min.esm.js',
