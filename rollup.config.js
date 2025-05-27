@@ -26,29 +26,4 @@ export default [
 	},
     ],
 },
-{
-    input: 'src/reactive_bundle.esm.js',
-    output: [
-	{
-	    file: 'dist/reactive_bundle.min.esm.js',
-	    format: 'es',
-	    plugins: [terser()],
-	    sourcemap: true,
-	},
-	{
-	    file: 'dist/reactive_bundle.umd.js',
-	    exports: 'named',
-	    format: 'umd',
-	    name: 'reactive',
-	},
-	{
-	    file: 'dist/reactive_bundle.min.umd.js',
-	    exports: 'named',
-	    format: 'umd',
-	    name: 'reactive',
-	    plugins: [terser()],
-	    sourcemap: true,
-	},
-    ],
-},
 ];
