@@ -32,6 +32,7 @@ function reactive (opts = {}) {
 }
 
 (r => {
+    // Read-only-view prototype for reactive values
     r._roPrototype = {
 	get $reactive () { return r.type; },
 	get readonly () { return true; },
@@ -39,6 +40,7 @@ function reactive (opts = {}) {
 	toString () { return this.getter().toString(); },
 	valueOf () { return this.getter(); },
     };
+    // Full-access prototype for reactive values
     r._prototype = Object.setPrototypeOf({
 	/* PUBLIC ATTRIBUTES */
 	get accessors () { return [this.getter, this.setter]; },
