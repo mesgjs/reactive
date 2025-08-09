@@ -38,6 +38,7 @@
 	}
 
 	(r => {
+	    // Read-only-view prototype for reactive values
 	    r._roPrototype = {
 		get $reactive () { return r.type; },
 		get readonly () { return true; },
@@ -45,6 +46,7 @@
 		toString () { return this.getter().toString(); },
 		valueOf () { return this.getter(); },
 	    };
+	    // Full-access prototype for reactive values
 	    r._prototype = Object.setPrototypeOf({
 		/* PUBLIC ATTRIBUTES */
 		get accessors () { return [this.getter, this.setter]; },
@@ -265,6 +267,12 @@
 			await cede();
 		    }
 		    --r._evalWait;
+		    if (!r._waiting && q0.size && !q1.size && !q2.size) {
+			// Queues are now all empty; signal waiters
+			const res = r._waiting.resolve;
+			r._waiting = undefined;
+			res();
+		    }
 		}
 	    }
 
@@ -298,6 +306,14 @@
 		    --r._untrack;
 		    return res;
 		},
+		// Return a promise that resolves when the eval queues are empty
+		wait () {
+		    if (r._waiting) return r._waiting.promise;
+		    const [ q0, q1, q2 ] = r._REQ;
+		    if (!r._evalWait && !q0.size && !q1.size && !q2.size) return Promise.resolve();
+		    r._waiting = Promise.withResolvers();
+		    return r._waiting.promise;
+		},
 		/* PRIVATE METHODS */
 		_queueEval (ro, dis = 0) {	// Queue reactive evaluation
 		    dis = Math.min(dis, 2);
@@ -309,7 +325,7 @@
 		},
 	    });
 	})(reactive);
-	const { batch, fv, run, typeOf, untracked } = reactive;
+	const { batch, fv, run, typeOf, untracked, wait } = reactive;
 
 	// END
 
@@ -320,6 +336,7 @@
 	exports.run = run;
 	exports.typeOf = typeOf;
 	exports.untracked = untracked;
+	exports.wait = wait;
 
 	Object.defineProperty(exports, '__esModule', { value: true });
 
