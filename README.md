@@ -71,6 +71,10 @@ Get the reactive type of a value.
 Execute callback without tracking dependencies.
 - Returns: Callback return value
 
+#### `reactive.wait()`
+Used to wait for reactive recalculations to settle.
+- Returns: A promise that resolves when reactive recalculations have settled.
+
 ### Instance Properties
 
 #### Value Access
