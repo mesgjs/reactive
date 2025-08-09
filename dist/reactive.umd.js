@@ -267,11 +267,11 @@
 			await cede();
 		    }
 		    --r._evalWait;
-		    if (!r._waiting && q0.size && !q1.size && !q2.size) {
+		    if (r._waiting && !q0.size && !q1.size && !q2.size) {
 			// Queues are now all empty; signal waiters
-			const res = r._waiting.resolve;
+			const resolve = r._waiting.resolve;
 			r._waiting = undefined;
-			res();
+			resolve(true);
 		    }
 		}
 	    }
@@ -310,7 +310,7 @@
 		wait () {
 		    if (r._waiting) return r._waiting.promise;
 		    const [ q0, q1, q2 ] = r._REQ;
-		    if (!r._evalWait && !q0.size && !q1.size && !q2.size) return Promise.resolve();
+		    if (!r._evalWait && !q0.size && !q1.size && !q2.size) return Promise.resolve(false);
 		    r._waiting = Promise.withResolvers();
 		    return r._waiting.promise;
 		},
