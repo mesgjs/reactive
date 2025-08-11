@@ -239,6 +239,7 @@
 
 	    // Yielding recalculation queue runner
 	    async function runner () {
+		r._runner = undefined;
 		if (!r._evalWait) {
 		    ++r._evalWait;
 		    const [ q0, q1, q2 ] = r._REQ;
@@ -297,7 +298,7 @@
 		},
 		run () {			// Run the eval queues (maybe)
 		    const [ q0, q1, q2 ] = r._REQ;
-		    if (!r._evalWait && (q0.size || q1.size || q2.size)) setTimeout(runner, 0);
+		    if (!r._evalWait && !r._runner && (q0.size || q1.size || q2.size)) r._runner = setTimeout(runner, 0);
 		},
 		get type () { return 1; },	// Type 1: basic direct
 		typeOf (v) { return v?.$reactive; },// Reactive type, if any
