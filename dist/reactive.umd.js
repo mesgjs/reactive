@@ -296,7 +296,8 @@
 		    return ((bfv && typeof v?._bundle === 'function') ? v._bundle() : v);
 		},
 		run () {			// Run the eval queues (maybe)
-		    if (!r._evalWait) setTimeout(runner, 0);
+		    const [ q0, q1, q2 ] = r._REQ;
+		    if (!r._evalWait && (q0.size || q1.size || q2.size)) setTimeout(runner, 0);
 		},
 		get type () { return 1; },	// Type 1: basic direct
 		typeOf (v) { return v?.$reactive; },// Reactive type, if any
