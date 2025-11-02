@@ -118,6 +118,10 @@
 						const res = this._def(this._v);
 						delete this._busy;
 						r._consumer = pc;	// Restore previous consumer
+						if (res?.then) {
+							console.error('Then-able reactive result!');
+							throw new TypeError('Then-able reactive result!');
+						}
 						this._setNotify(res);
 					} catch (e) {			// Try to clean up, unwind on error
 						delete this._busy;
@@ -243,7 +247,8 @@
 			if (!r._evalWait) {
 				++r._evalWait;
 				const [ q0, q1, q2 ] = r._REQ;
-				const runFirst = q => { try { q.values().next().value.rv; } catch (_err) {/**/} };
+				const getFirst = (q) => q.values().next().value;
+				const runFirst = (q) => { try { getFirst(q).rv; } catch (_err) {/**/} };
 				let lastYield = performance.now();
 				const cede = async () => {
 					if (performance.now() - lastYield >= r.sliceTime) {
@@ -257,9 +262,9 @@
 				 * Abort if evalWait goes up (running a batch).
 				 */
 				while (r._evalWait < 2) {
-					for (const ro of q0) {
-						if (r._evalWait < 2) try { ro.rv; } catch (_err) {/**/} finally { await cede(); }
-						else break;
+					while (q0.size && r._evalWait < 2) {
+						runFirst(q0);
+						await cede();
 					}
 					if (r._evalWait > 1) break;
 					else if (q1.size) runFirst(q1);
@@ -302,6 +307,14 @@
 			},
 			get type () { return 1; },		// Type 1: basic direct
 			typeOf (v) { return v?.$reactive; },// Reactive type, if any
+			unbatch (cb) {					// Combined untracked batch
+				++r._evalWait;
+				++r._untrack;
+				const res = cb();
+				--r._untrack;
+				--r._evalWait;
+				return res;
+			},
 			untracked (cb) {				// Execute callback untracked
 				++r._untrack;
 				const res = cb();
@@ -327,6 +340,7 @@
 			},
 		});
 	})(reactive);
+	reactive.untr = reactive.untracked; // alias
 	const { batch, fv, run, typeOf, untracked, wait } = reactive;
 
 	// END
